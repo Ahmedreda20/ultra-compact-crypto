@@ -5,17 +5,6 @@ const isNode =
     typeof process.versions.node === "string" &&
     process.release?.name === "node";
 
-// Node.js imports
-let CryptoJS, fs, zlib;
-if (isNode) {
-    CryptoJS = require("crypto-js");
-    fs = require("fs");
-    zlib = require("zlib");
-} else {
-    // In browser, CryptoJS should be available globally
-    CryptoJS = window.CryptoJS;
-}
-
 // Colors
 const colors = {
     green: "\x1b[32m",
@@ -23,6 +12,111 @@ const colors = {
     red: "\x1b[31m",
     reset: "\x1b[0m",
 };
+
+// CryptoJS loader - handles different environments
+let CryptoJS, fs, zlib;
+
+/**
+ * Load Node.js dependencies only in Node.js environment
+ */
+async function loadNodeDependencies() {
+    if (!isNode) return;
+
+    try {
+        // Use dynamic import for Node.js modules to work in ES modules
+        if (typeof require === 'undefined') {
+            // ES module environment
+            const cryptoJSModule = await import('crypto-js');
+            CryptoJS = cryptoJSModule.default || cryptoJSModule;
+
+            const fsModule = await import('fs');
+            fs = fsModule.default || fsModule;
+
+            const zlibModule = await import('zlib');
+            zlib = zlibModule.default || zlibModule;
+        } else {
+            // CommonJS environment
+            CryptoJS = require("crypto-js");
+            fs = require("fs");
+            zlib = require("zlib");
+        }
+    } catch (error) {
+        console.error("Failed to load Node.js dependencies:", error.message);
+        throw error;
+    }
+}
+
+/**
+ * Dynamically load CryptoJS
+ */
+async function ensureCryptoJS() {
+    if (CryptoJS) {
+        return CryptoJS;
+    }
+
+    // Try different ways to load CryptoJS
+    if (typeof CryptoJS !== "undefined") {
+        // CryptoJS is available globally
+        return CryptoJS;
+    } else if (typeof window !== "undefined" && window.CryptoJS) {
+        // CryptoJS attached to window
+        CryptoJS = window.CryptoJS;
+        return CryptoJS;
+    } else if (isNode) {
+        // Node.js environment - load dynamically
+        await loadNodeDependencies();
+        return CryptoJS;
+    } else {
+        // Browser ES module environment
+        try {
+            const cryptoJSModule = await import('crypto-js');
+            CryptoJS = cryptoJSModule.default || cryptoJSModule;
+            return CryptoJS;
+        } catch (error) {
+            throw new Error(
+                `CryptoJS is required but not available. Please install it:\n` +
+                `npm install crypto-js\n\n` +
+                `And import it in your project:\n` +
+                `import CryptoJS from 'crypto-js';`
+            );
+        }
+    }
+}
+
+/**
+ * Verify CryptoJS is available and has required functions
+ */
+async function verifyCryptoJS() {
+    const crypto = await ensureCryptoJS();
+
+    if (typeof crypto.SHA256 !== "function") {
+        throw new Error("CryptoJS.SHA256 is not available. CryptoJS may not be properly loaded.");
+    }
+    if (typeof crypto.MD5 !== "function") {
+        throw new Error("CryptoJS.MD5 is not available. CryptoJS may not be properly loaded.");
+    }
+    if (typeof crypto.AES !== "object") {
+        throw new Error("CryptoJS.AES is not available. CryptoJS may not be properly loaded.");
+    }
+    if (typeof crypto.enc !== "object") {
+        throw new Error("CryptoJS.enc is not available. CryptoJS may not be properly loaded.");
+    }
+
+    return crypto;
+}
+
+/**
+ * Get CryptoJS instance with proper encoding
+ */
+async function getCryptoJS() {
+    const crypto = await verifyCryptoJS();
+    return {
+        crypto,
+        enc: crypto.enc,
+        mode: crypto.mode,
+        pad: crypto.pad
+    };
+}
 
 /**
  * Decode base62 string to hex
@@ -86,7 +180,8 @@ function wordArrayToUint8Array(wordArray) {
 /**
  * Convert Uint8Array to WordArray
  */
-function uint8ArrayToWordArray(uint8Array) {
+async function uint8ArrayToWordArray(uint8Array) {
+    const { crypto } = await getCryptoJS();
     const words = [];
     for (let i = 0; i < uint8Array.length; i += 4) {
         let word = 0;
@@ -95,43 +190,51 @@ function uint8ArrayToWordArray(uint8Array) {
         }
         words.push(word);
     }
-    return CryptoJS.lib.WordArray.create(words, uint8Array.length);
+    return crypto.lib.WordArray.create(words, uint8Array.length);
 }
 
 /**
  * SHA-256 hash using CryptoJS
  */
 async function sha256(str) {
-    const hash = CryptoJS.SHA256(str);
-    return hash.toString(CryptoJS.enc.Hex);
+    const { crypto, enc } = await getCryptoJS();
+    const hash = crypto.SHA256(str);
+    return hash.toString(enc.Hex);
 }
 
 /**
  * MD5 hash using CryptoJS
  */
-function md5(str) {
-    const hash = CryptoJS.MD5(str);
-    return hash.toString(CryptoJS.enc.Hex);
+async function md5(str) {
+    const { crypto, enc } = await getCryptoJS();
+    const hash = crypto.MD5(str);
+    return hash.toString(enc.Hex);
 }
 
 /**
  * Derive key + IV
  */
 async function deriveKeyAndIV(password) {
+    const { enc } = await getCryptoJS();
     const keyHex = await sha256(password);
-    const ivHex = md5(password); // Using MD5 for IV for compatibility
+    const ivHex = await md5(password); // Using MD5 for IV for compatibility
 
     return {
-        key: CryptoJS.enc.Hex.parse(keyHex),
-        iv: CryptoJS.enc.Hex.parse(ivHex),
+        key: enc.Hex.parse(keyHex),
+        iv: enc.Hex.parse(ivHex),
     };
 }
 
 /**
  * Handle gzip decompression
  */
-function decompressData(compressedData, isBinary = false) {
+async function decompressData(compressedData, isBinary = false) {
     if (isNode) {
+        // Ensure Node.js modules are loaded
+        if (!fs || !zlib) {
+            await loadNodeDependencies();
+        }
+
         const compressedBuffer = Buffer.from(compressedData, isBinary ? 'binary' : 'utf8');
         const decompressed = zlib.gunzipSync(compressedBuffer);
         return decompressed.toString("utf8");
@@ -139,13 +242,21 @@ function decompressData(compressedData, isBinary = false) {
         // Browser environment
         if (typeof pako !== "undefined") {
             try {
-                const compressedBytes = isBinary
-                    ? new Uint8Array(compressedData.match(/[\da-f]{2}/gi).map(h => parseInt(h, 16)))
-                    : new TextEncoder().encode(compressedData);
+                let compressedBytes;
+                if (isBinary) {
+                    // For binary data, we need to handle it carefully
+                    if (typeof compressedData === 'string') {
+                        compressedBytes = new TextEncoder().encode(compressedData);
+                    } else {
+                        compressedBytes = compressedData;
+                    }
+                } else {
+                    compressedBytes = new TextEncoder().encode(compressedData);
+                }
                 const decompressed = pako.ungzip(compressedBytes);
                 return new TextDecoder().decode(decompressed);
             } catch (e) {
-                // If pako decompression fails, return the original data
+                console.warn("Gzip decompression failed, returning original data:", e.message);
                 return compressedData;
             }
         }
@@ -158,40 +269,47 @@ function decompressData(compressedData, isBinary = false) {
  */
 async function decrypt(encryptedBase62, password) {
     try {
+        const { crypto, enc, mode, pad } = await getCryptoJS();
+
         const hex = base62Decode(encryptedBase62);
         const encryptedBytes = hexToBytes(hex);
         const { key, iv } = await deriveKeyAndIV(password);
 
         // Convert encrypted bytes to CryptoJS WordArray
-        const encryptedWordArray = uint8ArrayToWordArray(encryptedBytes);
+        const encryptedWordArray = await uint8ArrayToWordArray(encryptedBytes);
 
         // Decrypt using AES CBC
-        const decrypted = CryptoJS.AES.decrypt(
+        const decrypted = crypto.AES.decrypt(
             { ciphertext: encryptedWordArray },
             key,
             {
                 iv: iv,
-                mode: CryptoJS.mode.CBC,
-                padding: CryptoJS.pad.Pkcs7
+                mode: mode.CBC,
+                padding: pad.Pkcs7
             }
         );
 
         // Try to decode as UTF-8 first
         let decryptedString;
         try {
-            decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+            decryptedString = decrypted.toString(enc.Utf8);
+            // If we get empty string but have data, try Latin1
+            if (decryptedString === "" && decrypted.sigBytes > 0) {
+                decryptedString = decrypted.toString(enc.Latin1);
+            }
         } catch (e) {
             // If UTF-8 fails, try Latin1 for binary data
-            decryptedString = decrypted.toString(CryptoJS.enc.Latin1);
+            decryptedString = decrypted.toString(enc.Latin1);
         }
 
-        // Check if the decrypted data is gzipped
-        if (decryptedString.length > 0) {
+        // Check if the decrypted data is gzipped (look for gzip magic number)
+        if (decryptedString && decryptedString.length > 0) {
             // Try to decompress - it will return original data if not compressed
-            return decompressData(decryptedString, true);
+            const finalResult = await decompressData(decryptedString, true);
+            return finalResult;
         }
 
-        throw new Error("Decryption resulted in empty data");
+        return decryptedString || "";
     } catch (error) {
         throw new Error(`Decryption failed: ${error.message}`);
     }
@@ -206,27 +324,34 @@ async function decryptFile(inputFile, outputFile, password) {
     }
 
     try {
+        // Ensure Node.js modules are loaded
+        if (!fs || !zlib) {
+            await loadNodeDependencies();
+        }
+
+        const { crypto, enc, mode, pad } = await getCryptoJS();
+
         const base62String = fs.readFileSync(inputFile, "utf8").trim();
         const hex = base62Decode(base62String);
         const encryptedBytes = hexToBytes(hex);
         const { key, iv } = await deriveKeyAndIV(password);
 
         // Convert encrypted bytes to CryptoJS WordArray
-        const encryptedWordArray = uint8ArrayToWordArray(encryptedBytes);
+        const encryptedWordArray = await uint8ArrayToWordArray(encryptedBytes);
 
         // Decrypt using AES CBC
-        const decrypted = CryptoJS.AES.decrypt(
+        const decrypted = crypto.AES.decrypt(
             { ciphertext: encryptedWordArray },
             key,
             {
                 iv: iv,
-                mode: CryptoJS.mode.CBC,
-                padding: CryptoJS.pad.Pkcs7
+                mode: mode.CBC,
+                padding: pad.Pkcs7
             }
         );
 
         // Convert decrypted WordArray to buffer for gzip decompression
-        const decryptedBuffer = Buffer.from(decrypted.toString(CryptoJS.enc.Latin1), 'binary');
+        const decryptedBuffer = Buffer.from(decrypted.toString(enc.Latin1), 'binary');
         const decompressed = zlib.gunzipSync(decryptedBuffer);
         fs.writeFileSync(outputFile, decompressed);
 
@@ -240,8 +365,8 @@ async function decryptFile(inputFile, outputFile, password) {
 const decryptAsync = decrypt;
 const decryptFileAsync = decryptFile;
 
-// CLI
-function printUsage() {
+// CLI - Only for Node.js
+async function printUsage() {
     console.log("Usage: node decrypt.js [OPTIONS]");
     console.log("");
     console.log("Options:");
@@ -252,7 +377,7 @@ function printUsage() {
     console.log("  -h, --help             Show help");
 }
 
-function parseArgs() {
+async function parseArgs() {
     const args = {
         text: null,
         file: null,
@@ -280,13 +405,13 @@ function parseArgs() {
                 break;
             case "-h":
             case "--help":
-                printUsage();
+                await printUsage();
                 process.exit(0);
             default:
                 console.error(
                     `${colors.red}Unknown option: ${process.argv[i]}${colors.reset}`
                 );
-                printUsage();
+                await printUsage();
                 process.exit(1);
         }
     }
@@ -294,74 +419,77 @@ function parseArgs() {
     return args;
 }
 
-function runCLI() {
+async function runCLI() {
     if (!isNode) {
         console.error("CLI mode only works in Node.js");
         return;
     }
 
-    const args = parseArgs();
+    const args = await parseArgs();
 
     if (!args.password) {
         console.error(`${colors.red}Password required${colors.reset}`);
-        printUsage();
+        await printUsage();
         process.exit(1);
     }
 
     if (!args.text && !args.file) {
         console.error(`${colors.red}Provide text or file${colors.reset}`);
-        printUsage();
+        await printUsage();
         process.exit(1);
     }
 
-    (async () => {
-        try {
-            if (args.text) {
-                console.log(`${colors.green}Decrypting text...${colors.reset}`);
-                const decrypted = await decrypt(args.text, args.password);
+    try {
+        if (args.text) {
+            console.log(`${colors.green}Decrypting text...${colors.reset}`);
+            const decrypted = await decrypt(args.text, args.password);
 
-                if (args.output) {
-                    fs.writeFileSync(args.output, decrypted);
-                    console.log(
-                        `${colors.green}Saved to: ${args.output}${colors.reset}`
-                    );
-                } else {
-                    console.log(`${colors.yellow}Decrypted:${colors.reset}`);
-                    console.log(decrypted);
-                }
-            }
-
-            if (args.file) {
-                if (!fs.existsSync(args.file)) {
-                    console.error(
-                        `${colors.red}File not found: ${args.file}${colors.reset}`
-                    );
-                    process.exit(1);
-                }
-
-                console.log(`${colors.green}Decrypting file...${colors.reset}`);
-
-                const outputFile =
-                    args.output || args.file.replace(/\.enc$/, ".dec");
-
-                await decryptFile(args.file, outputFile, args.password);
-
+            if (args.output) {
+                if (!fs) await loadNodeDependencies();
+                fs.writeFileSync(args.output, decrypted);
                 console.log(
-                    `${colors.green}File decrypted: ${outputFile}${colors.reset}`
+                    `${colors.green}Saved to: ${args.output}${colors.reset}`
                 );
+            } else {
+                console.log(`${colors.yellow}Decrypted:${colors.reset}`);
+                console.log(decrypted);
             }
-        } catch (err) {
-            console.error(`${colors.red}${err.message}${colors.reset}`);
-            process.exit(1);
         }
-    })();
+
+        if (args.file) {
+            if (!fs) await loadNodeDependencies();
+
+            if (!fs.existsSync(args.file)) {
+                console.error(
+                    `${colors.red}File not found: ${args.file}${colors.reset}`
+                );
+                process.exit(1);
+            }
+
+            console.log(`${colors.green}Decrypting file...${colors.reset}`);
+
+            const outputFile =
+                args.output || args.file.replace(/\.enc$/, ".dec");
+
+            await decryptFile(args.file, outputFile, args.password);
+
+            console.log(
+                `${colors.green}File decrypted: ${outputFile}${colors.reset}`
+            );
+        }
+    } catch (err) {
+        console.error(`${colors.red}${err.message}${colors.reset}`);
+        process.exit(1);
+    }
 }
 
-if (isNode && require.main === module) {
+// Only run CLI if this is the main Node.js module
+if (isNode && typeof require !== 'undefined' && require.main === module) {
     runCLI();
 }
 
-module.exports = {
+// Export for different environments
+const UltraCompactCrypto = {
     decrypt,
     decryptFile,
     decryptAsync,
@@ -370,11 +498,14 @@ module.exports = {
     deriveKeyAndIV,
 };
 
-// Browser export
-if (typeof window !== "undefined") {
-    window.UltraCompactCrypto = {
-        decrypt,
-        decryptAsync,
-        base62Decode,
-    };
+// CommonJS export
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = UltraCompactCrypto;
 }
+
+// Browser and ES module export
+if (typeof window !== "undefined") {
+    window.UltraCompactCrypto = UltraCompactCrypto;
+}
+
+export default UltraCompactCrypto;
