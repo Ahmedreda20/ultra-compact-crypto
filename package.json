@@ -43,7 +43,8 @@
     "README.md",
     "LICENSE"
   ],
-  "dependencies": {},
-  "devDependencies": {},
+  "dependencies": {
+    "crypto-js": "^4.2.0"
+  },
   "preferGlobal": false
 }
