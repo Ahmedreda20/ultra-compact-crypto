@@ -226,41 +226,83 @@ async function deriveKeyAndIV(password) {
 }
 
 /**
+ * Check if data is gzipped by looking for gzip magic number
+ */
+function isGzipped(data) {
+    if (typeof data === 'string') {
+        // Check for gzip magic number in hex: 1F 8B
+        return data.charCodeAt(0) === 0x1F && data.charCodeAt(1) === 0x8B;
+    } else if (data instanceof Uint8Array) {
+        return data[0] === 0x1F && data[1] === 0x8B;
+    }
+    return false;
+}
+
+/**
+ * Handle gzip decompression in browser
+ */
+async function decompressInBrowser(compressedData) {
+    // Try pako first if available
+    if (typeof pako !== "undefined") {
+        try {
+            let compressedBytes;
+            if (typeof compressedData === 'string') {
+                // Convert string to Uint8Array
+                const encoder = new TextEncoder();
+                compressedBytes = encoder.encode(compressedData);
+            } else {
+                compressedBytes = compressedData;
+            }
+            const decompressed = pako.ungzip(compressedBytes);
+            return new TextDecoder().decode(decompressed);
+        } catch (e) {
+            console.warn("Pako decompression failed:", e.message);
+        }
+    }
+
+    // Try using the Compression API (modern browsers)
+    if (typeof DecompressionStream !== "undefined") {
+        try {
+            let compressedBytes;
+            if (typeof compressedData === 'string') {
+                const encoder = new TextEncoder();
+                compressedBytes = encoder.encode(compressedData);
+            } else {
+                compressedBytes = compressedData;
+            }
+
+            const ds = new DecompressionStream('gzip');
+            const writer = ds.writable.getWriter();
+            writer.write(compressedBytes);
+            writer.close();
+
+            const response = new Response(ds.readable);
+            const arrayBuffer = await response.arrayBuffer();
+            return new TextDecoder().decode(arrayBuffer);
+        } catch (e) {
+            console.warn("Compression API decompression failed:", e.message);
+        }
+    }
+
+    throw new Error("No decompression method available in browser. Please include pako library or use a modern browser that supports Compression API.");
+}
+
+/**
  * Handle gzip decompression
  */
-async function decompressData(compressedData, isBinary = false) {
+async function decompressData(compressedData) {
     if (isNode) {
         // Ensure Node.js modules are loaded
         if (!fs || !zlib) {
             await loadNodeDependencies();
         }
 
-        const compressedBuffer = Buffer.from(compressedData, isBinary ? 'binary' : 'utf8');
+        const compressedBuffer = Buffer.from(compressedData, 'binary');
         const decompressed = zlib.gunzipSync(compressedBuffer);
         return decompressed.toString("utf8");
     } else {
         // Browser environment
-        if (typeof pako !== "undefined") {
-            try {
-                let compressedBytes;
-                if (isBinary) {
-                    // For binary data, we need to handle it carefully
-                    if (typeof compressedData === 'string') {
-                        compressedBytes = new TextEncoder().encode(compressedData);
-                    } else {
-                        compressedBytes = compressedData;
-                    }
-                } else {
-                    compressedBytes = new TextEncoder().encode(compressedData);
-                }
-                const decompressed = pako.ungzip(compressedBytes);
-                return new TextDecoder().decode(decompressed);
-            } catch (e) {
-                console.warn("Gzip decompression failed, returning original data:", e.message);
-                return compressedData;
-            }
-        }
-        return compressedData;
+        return await decompressInBrowser(compressedData);
     }
 }
 
@@ -289,27 +331,24 @@ async function decrypt(encryptedBase62, password) {
             }
         );
 
-        // Try to decode as UTF-8 first
-        let decryptedString;
-        try {
-            decryptedString = decrypted.toString(enc.Utf8);
-            // If we get empty string but have data, try Latin1
-            if (decryptedString === "" && decrypted.sigBytes > 0) {
-                decryptedString = decrypted.toString(enc.Latin1);
-            }
-        } catch (e) {
-            // If UTF-8 fails, try Latin1 for binary data
-            decryptedString = decrypted.toString(enc.Latin1);
-        }
+        // Get the decrypted data as Latin1 (binary) string
+        const decryptedBinaryString = decrypted.toString(enc.Latin1);
 
-        // Check if the decrypted data is gzipped (look for gzip magic number)
-        if (decryptedString && decryptedString.length > 0) {
-            // Try to decompress - it will return original data if not compressed
-            const finalResult = await decompressData(decryptedString, true);
+        // Check if the decrypted data is gzipped
+        if (isGzipped(decryptedBinaryString)) {
+            // It's gzipped, so decompress it
+            const finalResult = await decompressData(decryptedBinaryString);
             return finalResult;
+        } else {
+            // Try to decode as UTF-8 text directly
+            try {
+                const utf8String = decrypted.toString(enc.Utf8);
+                return utf8String;
+            } catch (e) {
+                // If UTF-8 fails, return the binary string
+                return decryptedBinaryString;
+            }
         }
-
-        return decryptedString || "";
     } catch (error) {
         throw new Error(`Decryption failed: ${error.message}`);
     }
