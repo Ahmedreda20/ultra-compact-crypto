@@ -1,10 +1,47 @@
 {
-  "name": "encryption",
+  "name": "ultra-compact-crypto",
   "version": "1.0.0",
-  "description": "",
+  "description": "Ultra-compact encryption/decryption library with very short alphanumeric output using AES-256-CBC and base62 encoding",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "bin": {
+    "decrypt": "./index.js"
   },
-  "private": true
+  "scripts": {
+    "test": "node test.js",
+    "decrypt": "node index.js"
+  },
+  "keywords": [
+    "encryption",
+    "decryption",
+    "aes",
+    "aes-256",
+    "base62",
+    "compact",
+    "crypto",
+    "security",
+    "cipher",
+    "compress",
+    "gzip"
+  ],
+  "author": "Ahmed Reda ahmedreda0219@gmail.com",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ahmedreda20/ultra-compact-crypto.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ahmedreda20/ultra-compact-crypto/issues"
+  },
+  "homepage": "https://github.com/ahmedreda20/ultra-compact-crypto#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {},
+  "devDependencies": {},
+  "preferGlobal": false
 }

@@ -1,0 +1,38 @@
+# Test files
+test.js
+*.test.js
+__tests__/
+
+# Development files
+.git
+.gitignore
+.DS_Store
+*.log
+npm-debug.log*
+
+# Documentation source
+docs/
+
+# Examples
+examples/
+encrypt.sh
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+
+# Build files
+dist/
+build/
+coverage/
+
+# Temporary files
+tmp/
+temp/
