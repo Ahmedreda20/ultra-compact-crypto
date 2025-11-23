@@ -30,28 +30,49 @@ npm install -g ultra-compact-crypto
 
 ## 🚀 Quick Start
 
-### Encryption (Bash Script)
-```bash
-# Make script executable
-chmod +x encrypt.sh
+### Encryption & Decryption (CLI)
 
+#### Using Global Commands (After Global Install)
+```bash
 # Encrypt text
-./encrypt.sh -t "Hello World" -p mypassword
+ucc-encrypt -t "Hello World" -p mypassword
 # Output: jsdf9rej4i
 
 # Encrypt file
-./encrypt.sh -f document.txt -p mypassword -o encrypted.enc
-```
+ucc-encrypt -f document.txt -p mypassword -o encrypted.enc
 
-### Decryption (Node.js)
-
-#### Command Line
-```bash
 # Decrypt text
 decrypt -t "jsdf9rej4i" -p mypassword
 
 # Decrypt file
 decrypt -f encrypted.enc -p mypassword -o document.txt
+```
+
+#### Using NPM Scripts (Local Install)
+```bash
+# Encrypt text
+npm run encrypt -- -t "Hello World" -p mypassword
+
+# Encrypt file
+npm run encrypt -- -f data.txt -p mypassword -o encrypted.enc
+
+# Decrypt text
+npm run decrypt -- -t "jsdf9rej4i" -p mypassword
+
+# Decrypt file
+npm run decrypt -- -f encrypted.enc -p mypassword -o data.txt
+```
+
+#### Using Bash Script Directly
+```bash
+# Make script executable (first time only)
+chmod +x encrypt.sh
+
+# Encrypt text
+./encrypt.sh -t "Hello World" -p mypassword
+
+# Encrypt file
+./encrypt.sh -f document.txt -p mypassword -o encrypted.enc
 ```
 
 #### Node.js Module
@@ -66,9 +87,15 @@ console.log(result); // Output: Hello World
 
 ### Basic Text Encryption/Decryption
 
-**Encrypt:**
+**Encrypt (using global command):**
 ```bash
-./encrypt.sh -t "Secret Message" -p mypass123
+ucc-encrypt -t "Secret Message" -p mypass123
+# Output: 4kR8mPq2Vx9L
+```
+
+**Encrypt (using npm script):**
+```bash
+npm run encrypt -- -t "Secret Message" -p mypass123
 # Output: 4kR8mPq2Vx9L
 ```
 
@@ -86,9 +113,14 @@ try {
 
 ### File Encryption/Decryption
 
-**Encrypt:**
+**Encrypt (using global command):**
 ```bash
-./encrypt.sh -f data.json -p securepass -o data.enc
+ucc-encrypt -f data.json -p securepass -o data.enc
+```
+
+**Encrypt (using npm script):**
+```bash
+npm run encrypt -- -f data.json -p securepass -o data.enc
 ```
 
 **Decrypt:**
@@ -300,8 +332,49 @@ Utility function to derive encryption key and IV from password.
 
 ## 🖥️ CLI Usage
 
+### Global Commands (After `npm install -g`)
+
+**Encryption:**
+```bash
+ucc-encrypt -t "text" -p password          # Encrypt text
+ucc-encrypt -f file.txt -p password        # Encrypt file
+ucc-encrypt -f file.txt -p pass -o out.enc # Encrypt with custom output
+```
+
+**Decryption:**
+```bash
+decrypt -t "encrypted" -p password         # Decrypt text
+decrypt -f file.enc -p password            # Decrypt file
+decrypt -f file.enc -p pass -o output.txt  # Decrypt with custom output
+```
+
+### NPM Scripts (Local Installation)
+
+**Encryption:**
+```bash
+npm run encrypt -- -t "text" -p password
+npm run encrypt -- -f file.txt -p password -o encrypted.enc
+```
+
+**Decryption:**
+```bash
+npm run decrypt -- -t "encrypted" -p password
+npm run decrypt -- -f encrypted.enc -p password -o output.txt
+```
+
 ### Options
 
+**Encryption (`ucc-encrypt`):**
+
+```
+-t, --text TEXT        Text to encrypt
+-f, --file FILE        File to encrypt
+-p, --password PASS    Encryption password (required)
+-o, --output FILE      Output file (optional)
+-h, --help             Show help message
+```
+
+**Decryption (`decrypt`):**
 ```
 -t, --text TEXT        Encrypted text to decrypt
 -f, --file FILE        Encrypted file to decrypt
@@ -310,50 +383,54 @@ Utility function to derive encryption key and IV from password.
 -h, --help             Show help message
 ```
 
-### Examples
+### Complete Examples
 
+**Scenario 1: Encrypt & Decrypt Text**
 ```bash
-# Decrypt text and print to console
-decrypt -t "jsdf9rej4i" -p mypassword
+# Global commands
+ucc-encrypt -t "My secret data" -p mypass123
+# Output: 7jKm4pQx2Vn
 
-# Decrypt text and save to file
-decrypt -t "jsdf9rej4i" -p mypassword -o output.txt
+decrypt -t "7jKm4pQx2Vn" -p mypass123
+# Output: My secret data
 
-# Decrypt file
-decrypt -f encrypted.enc -p mypassword -o decrypted.txt
-
-# Show help
-decrypt --help
+# NPM scripts
+npm run encrypt -- -t "My secret data" -p mypass123
+npm run decrypt -- -t "7jKm4pQx2Vn" -p mypass123
 ```
 
-## 🔧 Encryption Script (Bash)
-
-The package includes a bash script for encryption:
-
-### Options
-
-```
--t, --text TEXT        Text to encrypt
--f, --file FILE        File to encrypt
--p, --password PASS    Encryption password (required)
--o, --output FILE      Output file (optional)
--h, --help             Show help
-```
-
-### Examples
-
+**Scenario 2: Encrypt & Decrypt Files**
 ```bash
-# Encrypt text
-./encrypt.sh -t "Hello World" -p mypassword
+# Global commands
+ucc-encrypt -f credentials.json -p strongpass -o creds.enc
+decrypt -f creds.enc -p strongpass -o credentials.json
 
-# Encrypt text and save to file
-./encrypt.sh -t "Secret" -p mypassword -o encrypted.txt
+# NPM scripts
+npm run encrypt -- -f credentials.json -p strongpass -o creds.enc
+npm run decrypt -- -f creds.enc -p strongpass -o credentials.json
+```
 
-# Encrypt file
-./encrypt.sh -f document.pdf -p mypassword -o document.enc
+**Scenario 3: Using Environment Variables**
+```bash
+# Set password in environment
+export MY_PASSWORD="supersecret"
 
-# Show help
-./encrypt.sh --help
+# Use in commands
+ucc-encrypt -t "Data" -p $MY_PASSWORD
+decrypt -t "encrypted" -p $MY_PASSWORD
+```
+
+**Scenario 4: Pipeline Usage**
+```bash
+# Encrypt multiple files
+for file in *.txt; do
+    ucc-encrypt -f "$file" -p mypass -o "${file}.enc"
+done
+
+# Decrypt multiple files
+for file in *.enc; do
+    decrypt -f "$file" -p mypass -o "${file%.enc}"
+done
 ```
 
 ## 🔐 Security Notes
@@ -376,6 +453,96 @@ The package includes a bash script for encryption:
 | "Secret Message" | `U2FsdGVk...` (72 chars) | `4kR8mPq2Vx9L` (12 chars) |
 
 **Result:** ~60-80% size reduction!
+
+## 🛠️ Integration in Your Projects
+
+### Using in package.json Scripts
+
+Add these scripts to your project's `package.json`:
+
+```json
+{
+  "scripts": {
+    "encrypt-config": "ucc-encrypt -f config.json -p $PASSWORD -o config.enc",
+    "decrypt-config": "decrypt -f config.enc -p $PASSWORD -o config.json",
+    "encrypt-secrets": "ucc-encrypt -f .env -p $SECRET_KEY -o .env.enc",
+    "decrypt-secrets": "decrypt -f .env.enc -p $SECRET_KEY -o .env"
+  }
+}
+```
+
+Then use:
+```bash
+PASSWORD=mypass npm run encrypt-config
+PASSWORD=mypass npm run decrypt-config
+```
+
+### Programmatic Usage
+
+```javascript
+const { decrypt, decryptFile } = require('ultra-compact-crypto');
+const { execSync } = require('child_process');
+
+// Encrypt using bash script
+function encrypt(text, password) {
+    const result = execSync(
+        `ucc-encrypt -t "${text}" -p "${password}"`,
+        { encoding: 'utf8' }
+    );
+    return result.trim().split('\n').pop(); // Get encrypted output
+}
+
+// Decrypt using module
+const encrypted = encrypt("Hello World", "mypass");
+const decrypted = decrypt(encrypted, "mypass");
+
+console.log('Encrypted:', encrypted);
+console.log('Decrypted:', decrypted);
+```
+
+### Build Pipeline Integration
+
+```javascript
+// build.js
+const { execSync } = require('child_process');
+
+// Encrypt sensitive files before deployment
+const filesToEncrypt = ['api-keys.json', '.env', 'secrets.txt'];
+
+filesToEncrypt.forEach(file => {
+    console.log(`Encrypting ${file}...`);
+    execSync(`ucc-encrypt -f ${file} -p ${process.env.DEPLOY_PASSWORD} -o ${file}.enc`);
+});
+
+console.log('All files encrypted successfully!');
+```
+
+### CI/CD Integration
+
+**GitHub Actions:**
+```yaml
+name: Encrypt Secrets
+on: [push]
+jobs:
+  encrypt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+      - name: Install package
+        run: npm install -g ultra-compact-crypto
+      - name: Encrypt files
+        run: |
+          ucc-encrypt -f secrets.json -p ${{ secrets.ENCRYPT_PASSWORD }} -o secrets.enc
+      - name: Upload encrypted files
+        uses: actions/upload-artifact@v2
+        with:
+          name: encrypted-files
+          path: '*.enc'
+```
+
+
 
 ## 📝 License
 

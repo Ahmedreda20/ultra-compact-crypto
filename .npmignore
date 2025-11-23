@@ -13,10 +13,6 @@ npm-debug.log*
 # Documentation source
 docs/
 
-# Examples
-examples/
-encrypt.sh
-
 # Editor files
 .vscode/
 .idea/
