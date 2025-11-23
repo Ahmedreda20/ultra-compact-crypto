@@ -6,11 +6,14 @@ const isNode =
     process.release?.name === "node";
 
 // Node.js imports
-let crypto, fs, zlib;
+let CryptoJS, fs, zlib;
 if (isNode) {
-    crypto = require("crypto");
+    CryptoJS = require("crypto-js");
     fs = require("fs");
     zlib = require("zlib");
+} else {
+    // In browser, CryptoJS should be available globally
+    CryptoJS = window.CryptoJS;
 }
 
 // Colors
@@ -65,27 +68,50 @@ function bytesToHex(bytes) {
 }
 
 /**
- * SHA-256 hash
+ * Convert WordArray to Uint8Array
  */
-async function sha256(str) {
-    if (isNode) {
-        return crypto.createHash("sha256").update(str).digest("hex");
-    } else {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(str);
-        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-        return bytesToHex(new Uint8Array(hashBuffer));
+function wordArrayToUint8Array(wordArray) {
+    const words = wordArray.words;
+    const sigBytes = wordArray.sigBytes;
+    const uint8Array = new Uint8Array(sigBytes);
+
+    for (let i = 0; i < sigBytes; i++) {
+        const byte = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+        uint8Array[i] = byte;
     }
+
+    return uint8Array;
 }
 
 /**
- * MD5 hash
+ * Convert Uint8Array to WordArray
+ */
+function uint8ArrayToWordArray(uint8Array) {
+    const words = [];
+    for (let i = 0; i < uint8Array.length; i += 4) {
+        let word = 0;
+        for (let j = 0; j < 4 && i + j < uint8Array.length; j++) {
+            word |= uint8Array[i + j] << (24 - j * 8);
+        }
+        words.push(word);
+    }
+    return CryptoJS.lib.WordArray.create(words, uint8Array.length);
+}
+
+/**
+ * SHA-256 hash using CryptoJS
+ */
+async function sha256(str) {
+    const hash = CryptoJS.SHA256(str);
+    return hash.toString(CryptoJS.enc.Hex);
+}
+
+/**
+ * MD5 hash using CryptoJS
  */
 function md5(str) {
-    if (isNode) {
-        return crypto.createHash("md5").update(str).digest("hex");
-    }
-    throw new Error("MD5 not available in browser environment");
+    const hash = CryptoJS.MD5(str);
+    return hash.toString(CryptoJS.enc.Hex);
 }
 
 /**
@@ -93,18 +119,38 @@ function md5(str) {
  */
 async function deriveKeyAndIV(password) {
     const keyHex = await sha256(password);
-
-    let ivHex;
-    if (isNode) {
-        ivHex = crypto.createHash("md5").update(password).digest("hex");
-    } else {
-        ivHex = keyHex.substring(0, 32);
-    }
+    const ivHex = md5(password); // Using MD5 for IV for compatibility
 
     return {
-        key: hexToBytes(keyHex),
-        iv: hexToBytes(ivHex),
+        key: CryptoJS.enc.Hex.parse(keyHex),
+        iv: CryptoJS.enc.Hex.parse(ivHex),
     };
+}
+
+/**
+ * Handle gzip decompression
+ */
+function decompressData(compressedData, isBinary = false) {
+    if (isNode) {
+        const compressedBuffer = Buffer.from(compressedData, isBinary ? 'binary' : 'utf8');
+        const decompressed = zlib.gunzipSync(compressedBuffer);
+        return decompressed.toString("utf8");
+    } else {
+        // Browser environment
+        if (typeof pako !== "undefined") {
+            try {
+                const compressedBytes = isBinary
+                    ? new Uint8Array(compressedData.match(/[\da-f]{2}/gi).map(h => parseInt(h, 16)))
+                    : new TextEncoder().encode(compressedData);
+                const decompressed = pako.ungzip(compressedBytes);
+                return new TextDecoder().decode(decompressed);
+            } catch (e) {
+                // If pako decompression fails, return the original data
+                return compressedData;
+            }
+        }
+        return compressedData;
+    }
 }
 
 /**
@@ -116,40 +162,36 @@ async function decrypt(encryptedBase62, password) {
         const encryptedBytes = hexToBytes(hex);
         const { key, iv } = await deriveKeyAndIV(password);
 
-        if (isNode) {
-            const decipher = crypto.createDecipheriv(
-                "aes-256-cbc",
-                Buffer.from(key),
-                Buffer.from(iv)
-            );
+        // Convert encrypted bytes to CryptoJS WordArray
+        const encryptedWordArray = uint8ArrayToWordArray(encryptedBytes);
 
-            let decrypted = decipher.update(Buffer.from(encryptedBytes));
-            decrypted = Buffer.concat([decrypted, decipher.final()]);
-
-            const decompressed = zlib.gunzipSync(decrypted);
-            return decompressed.toString("utf8");
-        } else {
-            const decrypted = await crypto.subtle.decrypt(
-                { name: "AES-CBC", iv },
-                await crypto.subtle.importKey(
-                    "raw",
-                    key,
-                    { name: "AES-CBC" },
-                    false,
-                    ["decrypt"]
-                ),
-                encryptedBytes
-            );
-
-            const decoder = new TextDecoder();
-
-            if (typeof pako !== "undefined") {
-                const decompressed = pako.ungzip(new Uint8Array(decrypted));
-                return decoder.decode(decompressed);
+        // Decrypt using AES CBC
+        const decrypted = CryptoJS.AES.decrypt(
+            { ciphertext: encryptedWordArray },
+            key,
+            {
+                iv: iv,
+                mode: CryptoJS.mode.CBC,
+                padding: CryptoJS.pad.Pkcs7
             }
+        );
 
-            return decoder.decode(decrypted);
+        // Try to decode as UTF-8 first
+        let decryptedString;
+        try {
+            decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+        } catch (e) {
+            // If UTF-8 fails, try Latin1 for binary data
+            decryptedString = decrypted.toString(CryptoJS.enc.Latin1);
         }
+
+        // Check if the decrypted data is gzipped
+        if (decryptedString.length > 0) {
+            // Try to decompress - it will return original data if not compressed
+            return decompressData(decryptedString, true);
+        }
+
+        throw new Error("Decryption resulted in empty data");
     } catch (error) {
         throw new Error(`Decryption failed: ${error.message}`);
     }
@@ -166,19 +208,26 @@ async function decryptFile(inputFile, outputFile, password) {
     try {
         const base62String = fs.readFileSync(inputFile, "utf8").trim();
         const hex = base62Decode(base62String);
-        const encryptedBuffer = Buffer.from(hex, "hex");
+        const encryptedBytes = hexToBytes(hex);
         const { key, iv } = await deriveKeyAndIV(password);
 
-        const decipher = crypto.createDecipheriv(
-            "aes-256-cbc",
-            Buffer.from(key),
-            Buffer.from(iv)
+        // Convert encrypted bytes to CryptoJS WordArray
+        const encryptedWordArray = uint8ArrayToWordArray(encryptedBytes);
+
+        // Decrypt using AES CBC
+        const decrypted = CryptoJS.AES.decrypt(
+            { ciphertext: encryptedWordArray },
+            key,
+            {
+                iv: iv,
+                mode: CryptoJS.mode.CBC,
+                padding: CryptoJS.pad.Pkcs7
+            }
         );
 
-        let decrypted = decipher.update(encryptedBuffer);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-
-        const decompressed = zlib.gunzipSync(decrypted);
+        // Convert decrypted WordArray to buffer for gzip decompression
+        const decryptedBuffer = Buffer.from(decrypted.toString(CryptoJS.enc.Latin1), 'binary');
+        const decompressed = zlib.gunzipSync(decryptedBuffer);
         fs.writeFileSync(outputFile, decompressed);
 
         return decompressed;
