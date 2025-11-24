@@ -1,9 +1,8 @@
+const {decrypt} = require("./index.js");
 
-import ulra from './index.js';
 
-
-(async () => {
-    const value  = await ulra.decrypt("3QjXlMQI4OpdPn2QczJlBQhqkLYBfJL79AnXVuGgiTkShVS14oqhBRkvqesieZBW0LGvLzRAd5ueECf5omf6nT", "f8a585b082324c67690a69d058cd0b3f")
+( () => {
+    const value  =  decrypt("8RTRCWkF0kBa2OD2Xjjk5xIr3HOPP1WGbDltEE7kvrI", "Password")
 
     console.log(value)
 })()

@@ -1,178 +1,484 @@
-# Ultra Compact Crypto 🔐
+# Framework-Specific Examples
 
-> Ultra-compact encryption/decryption library that produces very short alphanumeric output like `jsdf9rej4i`
-
-[![npm version](https://img.shields.io/npm/v/ultra-compact-crypto.svg)](https://www.npmjs.com/package/ultra-compact-crypto)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/node/v/ultra-compact-crypto.svg)](https://nodejs.org)
-
-## ✨ Features
-
-- 🎯 **Ultra-short output** - Produces compact alphanumeric strings (e.g., `jsdf9rej4i`)
-- 🔒 **Strong encryption** - AES-256-CBC with password-based key derivation
-- 📦 **Built-in compression** - Gzip compression before encryption for smaller output
-- 🔤 **Alphanumeric only** - Output uses `0-9`, `a-z`, `A-Z` (Base62 encoding)
-- 🛠️ **Dual mode** - Works as CLI tool or Node.js package
-- ⚡ **Zero dependencies** - Uses only Node.js built-in modules
-- 🌐 **Cross-platform** - Works on Linux, macOS, and Windows
+Complete examples for using Ultra Compact Crypto with popular JavaScript frameworks.
 
 ## 📦 Installation
 
-### As NPM Package
 ```bash
 npm install ultra-compact-crypto
+# or
+yarn add ultra-compact-crypto
+# or
+pnpm add ultra-compact-crypto
 ```
 
-### As Global CLI Tool
-```bash
-npm install -g ultra-compact-crypto
+---
+
+## ⚛️ React.js
+
+### Functional Component
+```jsx
+import { useState } from 'react';
+import { decrypt } from 'ultra-compact-crypto';
+
+function DecryptComponent() {
+    const [encrypted, setEncrypted] = useState('');
+    const [password, setPassword] = useState('');
+    const [result, setResult] = useState('');
+    const [error, setError] = useState('');
+
+    const handleDecrypt = () => {
+        try {
+            const decrypted = decrypt(encrypted, password);
+            setResult(decrypted);
+            setError('');
+        } catch (err) {
+            setError(err.message);
+            setResult('');
+        }
+    };
+
+    return (
+        <div className="decrypt-container">
+            <h2>Decrypt Data</h2>
+            <input
+                type="text"
+                placeholder="Encrypted text"
+                value={encrypted}
+                onChange={(e) => setEncrypted(e.target.value)}
+            />
+            <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+            />
+            <button onClick={handleDecrypt}>Decrypt</button>
+            
+            {result && <div className="success">Result: {result}</div>}
+            {error && <div className="error">Error: {error}</div>}
+        </div>
+    );
+}
+
+export default DecryptComponent;
 ```
 
-## 🚀 Quick Start
+### With TypeScript
+```tsx
+import { useState } from 'react';
+import { decrypt } from 'ultra-compact-crypto';
 
-### Encryption & Decryption (CLI)
+interface DecryptResult {
+    data: string;
+    error: string;
+}
 
-#### Using Global Commands (After Global Install)
-```bash
-# Encrypt text
-ucc-encrypt -t "Hello World" -p mypassword
-# Output: jsdf9rej4i
+const DecryptComponent: React.FC = () => {
+    const [encrypted, setEncrypted] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
+    const [result, setResult] = useState<DecryptResult>({ data: '', error: '' });
 
-# Encrypt file
-ucc-encrypt -f document.txt -p mypassword -o encrypted.enc
+    const handleDecrypt = (): void => {
+        try {
+            const decrypted = decrypt(encrypted, password);
+            setResult({ data: decrypted, error: '' });
+        } catch (err) {
+            setResult({ data: '', error: (err as Error).message });
+        }
+    };
 
-# Decrypt text
-decrypt -t "jsdf9rej4i" -p mypassword
+    return (
+        <div>
+            <input value={encrypted} onChange={(e) => setEncrypted(e.target.value)} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <button onClick={handleDecrypt}>Decrypt</button>
+            {result.data && <p>Result: {result.data}</p>}
+            {result.error && <p>Error: {result.error}</p>}
+        </div>
+    );
+};
 
-# Decrypt file
-decrypt -f encrypted.enc -p mypassword -o document.txt
+export default DecryptComponent;
 ```
 
-#### Using NPM Scripts (Local Install)
-```bash
-# Encrypt text
-npm run encrypt -- -t "Hello World" -p mypassword
+---
 
-# Encrypt file
-npm run encrypt -- -f data.txt -p mypassword -o encrypted.enc
+## 🔷 Next.js
 
-# Decrypt text
-npm run decrypt -- -t "jsdf9rej4i" -p mypassword
+### App Router (Next.js 13+)
+```tsx
+// app/decrypt/page.tsx
+'use client';
 
-# Decrypt file
-npm run decrypt -- -f encrypted.enc -p mypassword -o data.txt
-```
+import { useState } from 'react';
+import { decrypt } from 'ultra-compact-crypto';
 
-#### Using Bash Script Directly
-```bash
-# Make script executable (first time only)
-chmod +x encrypt.sh
+export default function DecryptPage() {
+    const [encrypted, setEncrypted] = useState('');
+    const [password, setPassword] = useState('');
+    const [result, setResult] = useState('');
 
-# Encrypt text
-./encrypt.sh -t "Hello World" -p mypassword
+    const handleDecrypt = () => {
+        try {
+            const decrypted = decrypt(encrypted, password);
+            setResult(decrypted);
+        } catch (error) {
+            alert('Decryption failed: ' + (error as Error).message);
+        }
+    };
 
-# Encrypt file
-./encrypt.sh -f document.txt -p mypassword -o encrypted.enc
-```
-
-#### Node.js Module
-```javascript
-const { decrypt } = require('ultra-compact-crypto');
-
-const result = decrypt('jsdf9rej4i', 'mypassword');
-console.log(result); // Output: Hello World
-```
-
-## 📖 Usage Examples
-
-### Basic Text Encryption/Decryption
-
-**Encrypt (using global command):**
-```bash
-ucc-encrypt -t "Secret Message" -p mypass123
-# Output: 4kR8mPq2Vx9L
-```
-
-**Encrypt (using npm script):**
-```bash
-npm run encrypt -- -t "Secret Message" -p mypass123
-# Output: 4kR8mPq2Vx9L
-```
-
-**Decrypt:**
-```javascript
-const { decrypt } = require('ultra-compact-crypto');
-
-try {
-    const plaintext = decrypt('4kR8mPq2Vx9L', 'mypass123');
-    console.log(plaintext); // Secret Message
-} catch (error) {
-    console.error('Decryption failed:', error.message);
+    return (
+        <main className="p-8">
+            <h1 className="text-2xl mb-4">Decrypt Data</h1>
+            <div className="space-y-4">
+                <input
+                    className="border p-2 w-full"
+                    placeholder="Encrypted text"
+                    value={encrypted}
+                    onChange={(e) => setEncrypted(e.target.value)}
+                />
+                <input
+                    className="border p-2 w-full"
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                    className="bg-blue-500 text-white px-4 py-2 rounded"
+                    onClick={handleDecrypt}
+                >
+                    Decrypt
+                </button>
+                {result && <div className="mt-4 p-4 bg-green-100">Result: {result}</div>}
+            </div>
+        </main>
+    );
 }
 ```
 
-### File Encryption/Decryption
+### API Route
+```typescript
+// app/api/decrypt/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { decrypt } from 'ultra-compact-crypto';
 
-**Encrypt (using global command):**
-```bash
-ucc-encrypt -f data.json -p securepass -o data.enc
-```
-
-**Encrypt (using npm script):**
-```bash
-npm run encrypt -- -f data.json -p securepass -o data.enc
-```
-
-**Decrypt:**
-```javascript
-const { decryptFile } = require('ultra-compact-crypto');
-
-decryptFile('data.enc', 'data.json', 'securepass');
-console.log('File decrypted successfully!');
-```
-
-### Async/Await Support
-
-```javascript
-const { decryptAsync, decryptFileAsync } = require('ultra-compact-crypto');
-
-async function decryptData() {
+export async function POST(request: NextRequest) {
     try {
-        // Decrypt text
-        const text = await decryptAsync('jsdf9rej4i', 'mypass');
-        console.log('Decrypted:', text);
+        const { encrypted, password } = await request.json();
+        
+        if (!encrypted || !password) {
+            return NextResponse.json(
+                { error: 'Missing encrypted text or password' },
+                { status: 400 }
+            );
+        }
 
-        // Decrypt file
-        await decryptFileAsync('encrypted.enc', 'output.txt', 'mypass');
-        console.log('File decrypted!');
+        const decrypted = decrypt(encrypted, password);
+        
+        return NextResponse.json({ success: true, data: decrypted });
     } catch (error) {
-        console.error('Error:', error.message);
+        return NextResponse.json(
+            { error: (error as Error).message },
+            { status: 500 }
+        );
     }
 }
-
-decryptData();
 ```
 
-### Express.js Integration
+### Pages Router (Next.js 12 and below)
+```tsx
+// pages/decrypt.tsx
+import { useState } from 'react';
+import { decrypt } from 'ultra-compact-crypto';
+
+export default function DecryptPage() {
+    const [encrypted, setEncrypted] = useState('');
+    const [password, setPassword] = useState('');
+    const [result, setResult] = useState('');
+
+    const handleDecrypt = () => {
+        try {
+            const decrypted = decrypt(encrypted, password);
+            setResult(decrypted);
+        } catch (error) {
+            alert((error as Error).message);
+        }
+    };
+
+    return (
+        <div>
+            <input value={encrypted} onChange={(e) => setEncrypted(e.target.value)} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <button onClick={handleDecrypt}>Decrypt</button>
+            {result && <p>{result}</p>}
+        </div>
+    );
+}
+```
+
+---
+
+## 💚 Vue.js 3 (Composition API)
+
+```vue
+<template>
+  <div class="decrypt-container">
+    <h2>Decrypt Data</h2>
+    <input
+      v-model="encrypted"
+      type="text"
+      placeholder="Encrypted text"
+    />
+    <input
+      v-model="password"
+      type="password"
+      placeholder="Password"
+    />
+    <button @click="handleDecrypt">Decrypt</button>
+    
+    <div v-if="result" class="success">Result: {{ result }}</div>
+    <div v-if="error" class="error">Error: {{ error }}</div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { decrypt } from 'ultra-compact-crypto';
+
+const encrypted = ref('');
+const password = ref('');
+const result = ref('');
+const error = ref('');
+
+const handleDecrypt = () => {
+  try {
+    result.value = decrypt(encrypted.value, password.value);
+    error.value = '';
+  } catch (err) {
+    error.value = (err as Error).message;
+    result.value = '';
+  }
+};
+</script>
+
+<style scoped>
+.decrypt-container {
+  padding: 20px;
+}
+.success {
+  color: green;
+  margin-top: 10px;
+}
+.error {
+  color: red;
+  margin-top: 10px;
+}
+</style>
+```
+
+### Vue.js 2 (Options API)
+
+```vue
+<template>
+  <div>
+    <input v-model="encrypted" placeholder="Encrypted text" />
+    <input v-model="password" type="password" placeholder="Password" />
+    <button @click="handleDecrypt">Decrypt</button>
+    <p v-if="result">Result: {{ result }}</p>
+    <p v-if="error" style="color: red;">Error: {{ error }}</p>
+  </div>
+</template>
+
+<script>
+import { decrypt } from 'ultra-compact-crypto';
+
+export default {
+  data() {
+    return {
+      encrypted: '',
+      password: '',
+      result: '',
+      error: ''
+    };
+  },
+  methods: {
+    handleDecrypt() {
+      try {
+        this.result = decrypt(this.encrypted, this.password);
+        this.error = '';
+      } catch (err) {
+        this.error = err.message;
+        this.result = '';
+      }
+    }
+  }
+};
+</script>
+```
+
+---
+
+## 💚 Nuxt.js 3
+
+```vue
+<!-- pages/decrypt.vue -->
+<template>
+  <div class="container">
+    <h1>Decrypt Data</h1>
+    <input
+      v-model="encrypted"
+      type="text"
+      placeholder="Encrypted text"
+      class="input"
+    />
+    <input
+      v-model="password"
+      type="password"
+      placeholder="Password"
+      class="input"
+    />
+    <button @click="handleDecrypt" class="button">Decrypt</button>
+    
+    <div v-if="result" class="result">{{ result }}</div>
+    <div v-if="error" class="error">{{ error }}</div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { decrypt } from 'ultra-compact-crypto';
+
+const encrypted = ref('');
+const password = ref('');
+const result = ref('');
+const error = ref('');
+
+const handleDecrypt = () => {
+  try {
+    result.value = decrypt(encrypted.value, password.value);
+    error.value = '';
+  } catch (err) {
+    error.value = (err as Error).message;
+    result.value = '';
+  }
+};
+</script>
+
+<style scoped>
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+}
+.button {
+  padding: 10px 20px;
+  background: #00dc82;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+.result {
+  margin-top: 20px;
+  color: green;
+}
+.error {
+  margin-top: 20px;
+  color: red;
+}
+</style>
+```
+
+---
+
+## ⚡ Vite + React
+
+```tsx
+// src/components/Decrypt.tsx
+import { useState } from 'react';
+import { decrypt } from 'ultra-compact-crypto';
+
+function Decrypt() {
+  const [encrypted, setEncrypted] = useState('');
+  const [password, setPassword] = useState('');
+  const [result, setResult] = useState('');
+
+  const handleDecrypt = () => {
+    try {
+      const decrypted = decrypt(encrypted, password);
+      setResult(decrypted);
+    } catch (error) {
+      console.error('Decryption failed:', error);
+      alert((error as Error).message);
+    }
+  };
+
+  return (
+    <div className="card">
+      <h2>Decrypt Data</h2>
+      <input
+        value={encrypted}
+        onChange={(e) => setEncrypted(e.target.value)}
+        placeholder="Encrypted text"
+      />
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Password"
+      />
+      <button onClick={handleDecrypt}>Decrypt</button>
+      {result && <p className="result">{result}</p>}
+    </div>
+  );
+}
+
+export default Decrypt;
+```
+
+---
+
+## 🟢 Express.js
 
 ```javascript
+// server.js
 const express = require('express');
-const { decrypt } = require('ultra-compact-crypto');
+const { decrypt, decryptFile } = require('ultra-compact-crypto');
 
 const app = express();
 app.use(express.json());
 
+// Decrypt text endpoint
 app.post('/api/decrypt', (req, res) => {
     const { encrypted, password } = req.body;
     
+    if (!encrypted || !password) {
+        return res.status(400).json({ error: 'Missing encrypted text or password' });
+    }
+    
     try {
-        const result = decrypt(encrypted, password);
-        res.json({ success: true, data: result });
+        const decrypted = decrypt(encrypted, password);
+        res.json({ success: true, data: decrypted });
     } catch (error) {
-        res.status(400).json({ 
-            success: false, 
-            error: error.message 
-        });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Decrypt file endpoint
+app.post('/api/decrypt-file', (req, res) => {
+    const { inputPath, outputPath, password } = req.body;
+    
+    try {
+        const decrypted = decryptFile(inputPath, outputPath, password);
+        res.json({ success: true, message: 'File decrypted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -181,410 +487,211 @@ app.listen(3000, () => {
 });
 ```
 
-### React.js Integration
+---
 
-```javascript
-import { useState } from 'react';
+## 🐱 NestJS
 
-function DecryptComponent() {
-    const [encrypted, setEncrypted] = useState('');
-    const [password, setPassword] = useState('');
-    const [result, setResult] = useState('');
-    const [error, setError] = useState('');
+```typescript
+// decrypt.controller.ts
+import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
+import { decrypt } from 'ultra-compact-crypto';
 
-    const handleDecrypt = async () => {
-        try {
-            const response = await fetch('/api/decrypt', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ encrypted, password })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                setResult(data.data);
-                setError('');
-            } else {
-                setError(data.error);
-                setResult('');
-            }
-        } catch (err) {
-            setError('Network error');
+class DecryptDto {
+    encrypted: string;
+    password: string;
+}
+
+@Controller('decrypt')
+export class DecryptController {
+    @Post()
+    async decryptData(@Body() decryptDto: DecryptDto) {
+        const { encrypted, password } = decryptDto;
+        
+        if (!encrypted || !password) {
+            throw new HttpException(
+                'Missing encrypted text or password',
+                HttpStatus.BAD_REQUEST
+            );
         }
-    };
-
-    return (
-        <div>
-            <h2>Decrypt Data</h2>
-            <input 
-                type="text"
-                placeholder="Encrypted text"
-                value={encrypted}
-                onChange={e => setEncrypted(e.target.value)}
-            />
-            <input 
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-            />
-            <button onClick={handleDecrypt}>Decrypt</button>
-            
-            {result && <p>Result: {result}</p>}
-            {error && <p style={{color: 'red'}}>Error: {error}</p>}
-        </div>
-    );
+        
+        try {
+            const decrypted = decrypt(encrypted, password);
+            return { success: true, data: decrypted };
+        } catch (error) {
+            throw new HttpException(
+                error.message,
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 }
-
-export default DecryptComponent;
 ```
 
-## 📚 API Reference
+```typescript
+// decrypt.service.ts
+import { Injectable } from '@nestjs/common';
+import { decrypt, decryptFile } from 'ultra-compact-crypto';
 
-### `decrypt(encryptedText, password)`
-Decrypts base62 encoded text synchronously.
-
-**Parameters:**
-- `encryptedText` (string) - Base62 encoded encrypted text
-- `password` (string) - Decryption password
-
-**Returns:** (string) Decrypted text
-
-**Throws:** Error if decryption fails
-
-**Example:**
-```javascript
-const result = decrypt('jsdf9rej4i', 'mypassword');
-```
-
----
-
-### `decryptFile(inputFile, outputFile, password)`
-Decrypts a file synchronously.
-
-**Parameters:**
-- `inputFile` (string) - Path to encrypted file
-- `outputFile` (string) - Path to output file
-- `password` (string) - Decryption password
-
-**Returns:** (Buffer) Decrypted data
-
-**Throws:** Error if decryption fails
-
-**Example:**
-```javascript
-decryptFile('encrypted.enc', 'output.txt', 'mypassword');
+@Injectable()
+export class DecryptService {
+    decryptText(encrypted: string, password: string): string {
+        try {
+            return decrypt(encrypted, password);
+        } catch (error) {
+            throw new Error(`Decryption failed: ${error.message}`);
+        }
+    }
+    
+    decryptFile(inputFile: string, outputFile: string, password: string): string {
+        try {
+            return decryptFile(inputFile, outputFile, password);
+        } catch (error) {
+            throw new Error(`File decryption failed: ${error.message}`);
+        }
+    }
+}
 ```
 
 ---
 
-### `decryptAsync(encryptedText, password)`
-Decrypts base62 encoded text asynchronously.
+## 🔥 Svelte
 
-**Parameters:**
-- `encryptedText` (string) - Base62 encoded encrypted text
-- `password` (string) - Decryption password
-
-**Returns:** Promise<string> - Decrypted text
-
-**Example:**
-```javascript
-const result = await decryptAsync('jsdf9rej4i', 'mypassword');
-```
-
----
-
-### `decryptFileAsync(inputFile, outputFile, password)`
-Decrypts a file asynchronously.
-
-**Parameters:**
-- `inputFile` (string) - Path to encrypted file
-- `outputFile` (string) - Path to output file
-- `password` (string) - Decryption password
-
-**Returns:** Promise<Buffer> - Decrypted data
-
-**Example:**
-```javascript
-await decryptFileAsync('encrypted.enc', 'output.txt', 'mypassword');
-```
-
----
-
-### `base62Decode(str)`
-Utility function to decode base62 strings to hex.
-
-**Parameters:**
-- `str` (string) - Base62 encoded string
-
-**Returns:** (string) Hex string
-
----
-
-### `deriveKeyAndIV(password)`
-Utility function to derive encryption key and IV from password.
-
-**Parameters:**
-- `password` (string) - Password string
-
-**Returns:** (Object) - Object with `key` and `iv` buffers
-
-## 🖥️ CLI Usage
-
-### Global Commands (After `npm install -g`)
-
-**Encryption:**
-```bash
-ucc-encrypt -t "text" -p password          # Encrypt text
-ucc-encrypt -f file.txt -p password        # Encrypt file
-ucc-encrypt -f file.txt -p pass -o out.enc # Encrypt with custom output
-```
-
-**Decryption:**
-```bash
-decrypt -t "encrypted" -p password         # Decrypt text
-decrypt -f file.enc -p password            # Decrypt file
-decrypt -f file.enc -p pass -o output.txt  # Decrypt with custom output
-```
-
-### NPM Scripts (Local Installation)
-
-**Encryption:**
-```bash
-npm run encrypt -- -t "text" -p password
-npm run encrypt -- -f file.txt -p password -o encrypted.enc
-```
-
-**Decryption:**
-```bash
-npm run decrypt -- -t "encrypted" -p password
-npm run decrypt -- -f encrypted.enc -p password -o output.txt
-```
-
-### Options
-
-**Encryption (`ucc-encrypt`):**
-
-```
--t, --text TEXT        Text to encrypt
--f, --file FILE        File to encrypt
--p, --password PASS    Encryption password (required)
--o, --output FILE      Output file (optional)
--h, --help             Show help message
-```
-
-**Decryption (`decrypt`):**
-```
--t, --text TEXT        Encrypted text to decrypt
--f, --file FILE        Encrypted file to decrypt
--p, --password PASS    Decryption password (required)
--o, --output FILE      Output file (optional)
--h, --help             Show help message
-```
-
-### Complete Examples
-
-**Scenario 1: Encrypt & Decrypt Text**
-```bash
-# Global commands
-ucc-encrypt -t "My secret data" -p mypass123
-# Output: 7jKm4pQx2Vn
-
-decrypt -t "7jKm4pQx2Vn" -p mypass123
-# Output: My secret data
-
-# NPM scripts
-npm run encrypt -- -t "My secret data" -p mypass123
-npm run decrypt -- -t "7jKm4pQx2Vn" -p mypass123
-```
-
-**Scenario 2: Encrypt & Decrypt Files**
-```bash
-# Global commands
-ucc-encrypt -f credentials.json -p strongpass -o creds.enc
-decrypt -f creds.enc -p strongpass -o credentials.json
-
-# NPM scripts
-npm run encrypt -- -f credentials.json -p strongpass -o creds.enc
-npm run decrypt -- -f creds.enc -p strongpass -o credentials.json
-```
-
-**Scenario 3: Using Environment Variables**
-```bash
-# Set password in environment
-export MY_PASSWORD="supersecret"
-
-# Use in commands
-ucc-encrypt -t "Data" -p $MY_PASSWORD
-decrypt -t "encrypted" -p $MY_PASSWORD
-```
-
-**Scenario 4: Pipeline Usage**
-```bash
-# Encrypt multiple files
-for file in *.txt; do
-    ucc-encrypt -f "$file" -p mypass -o "${file}.enc"
-done
-
-# Decrypt multiple files
-for file in *.enc; do
-    decrypt -f "$file" -p mypass -o "${file%.enc}"
-done
-```
-
-## 🔐 Security Notes
-
-- **Algorithm:** AES-256-CBC (Advanced Encryption Standard)
-- **Key Derivation:** SHA-256 hash of password
-- **IV Generation:** MD5 hash of password
-- **Compression:** Gzip before encryption
-- **Encoding:** Base62 for alphanumeric output
-- **No Salt:** For shorter output (use unique passwords)
-
-⚠️ **Important:** This library prioritizes compact output over maximum security. For high-security applications requiring salt and proper PBKDF2, consider using standard encryption libraries.
-
-## 📊 Output Size Comparison
-
-| Input | Standard Base64 | This Library (Base62) |
-|-------|----------------|----------------------|
-| "Hello" | `U2FsdGVk...` (44 chars) | `3jKm9pQ` (7 chars) |
-| "Hello World" | `U2FsdGVk...` (64 chars) | `jsdf9rej4i` (10 chars) |
-| "Secret Message" | `U2FsdGVk...` (72 chars) | `4kR8mPq2Vx9L` (12 chars) |
-
-**Result:** ~60-80% size reduction!
-
-## 🛠️ Integration in Your Projects
-
-### Using in package.json Scripts
-
-Add these scripts to your project's `package.json`:
-
-```json
-{
-  "scripts": {
-    "encrypt-config": "ucc-encrypt -f config.json -p $PASSWORD -o config.enc",
-    "decrypt-config": "decrypt -f config.enc -p $PASSWORD -o config.json",
-    "encrypt-secrets": "ucc-encrypt -f .env -p $SECRET_KEY -o .env.enc",
-    "decrypt-secrets": "decrypt -f .env.enc -p $SECRET_KEY -o .env"
+```svelte
+<script lang="ts">
+  import { decrypt } from 'ultra-compact-crypto';
+  
+  let encrypted = '';
+  let password = '';
+  let result = '';
+  let error = '';
+  
+  function handleDecrypt() {
+    try {
+      result = decrypt(encrypted, password);
+      error = '';
+    } catch (err) {
+      error = (err as Error).message;
+      result = '';
+    }
   }
-}
+</script>
+
+<div class="container">
+  <h2>Decrypt Data</h2>
+  <input bind:value={encrypted} placeholder="Encrypted text" />
+  <input bind:value={password} type="password" placeholder="Password" />
+  <button on:click={handleDecrypt}>Decrypt</button>
+  
+  {#if result}
+    <p class="success">Result: {result}</p>
+  {/if}
+  
+  {#if error}
+    <p class="error">Error: {error}</p>
+  {/if}
+</div>
+
+<style>
+  .container {
+    padding: 20px;
+  }
+  .success {
+    color: green;
+  }
+  .error {
+    color: red;
+  }
+</style>
 ```
-
-Then use:
-```bash
-PASSWORD=mypass npm run encrypt-config
-PASSWORD=mypass npm run decrypt-config
-```
-
-### Programmatic Usage
-
-```javascript
-const { decrypt, decryptFile } = require('ultra-compact-crypto');
-const { execSync } = require('child_process');
-
-// Encrypt using bash script
-function encrypt(text, password) {
-    const result = execSync(
-        `ucc-encrypt -t "${text}" -p "${password}"`,
-        { encoding: 'utf8' }
-    );
-    return result.trim().split('\n').pop(); // Get encrypted output
-}
-
-// Decrypt using module
-const encrypted = encrypt("Hello World", "mypass");
-const decrypted = decrypt(encrypted, "mypass");
-
-console.log('Encrypted:', encrypted);
-console.log('Decrypted:', decrypted);
-```
-
-### Build Pipeline Integration
-
-```javascript
-// build.js
-const { execSync } = require('child_process');
-
-// Encrypt sensitive files before deployment
-const filesToEncrypt = ['api-keys.json', '.env', 'secrets.txt'];
-
-filesToEncrypt.forEach(file => {
-    console.log(`Encrypting ${file}...`);
-    execSync(`ucc-encrypt -f ${file} -p ${process.env.DEPLOY_PASSWORD} -o ${file}.enc`);
-});
-
-console.log('All files encrypted successfully!');
-```
-
-### CI/CD Integration
-
-**GitHub Actions:**
-```yaml
-name: Encrypt Secrets
-on: [push]
-jobs:
-  encrypt:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-      - name: Install package
-        run: npm install -g ultra-compact-crypto
-      - name: Encrypt files
-        run: |
-          ucc-encrypt -f secrets.json -p ${{ secrets.ENCRYPT_PASSWORD }} -o secrets.enc
-      - name: Upload encrypted files
-        uses: actions/upload-artifact@v2
-        with:
-          name: encrypted-files
-          path: '*.enc'
-```
-
-
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🐛 Known Issues
-
-- Bash script requires `python3` for base62 encoding
-- Not compatible with browser environments (Node.js only)
-- Fixed IV derivation (less secure than random IV)
-
-## 🗺️ Roadmap
-
-- [ ] Browser-compatible version
-- [ ] TypeScript support
-- [ ] Additional encryption algorithms
-- [ ] Salt support option
-- [ ] GUI application
-- [ ] Performance optimizations
-
-## 📧 Support
-
-- **Issues:** [GitHub Issues](https://github.com/ahmedreda20/ultra-compact-crypto/issues)
-- **Email:** ahmedreda0219@gmail.com
-- **Discussions:** [GitHub Discussions](https://github.com/ahmedreda20/ultra-compact-crypto/discussions)
-
-## 👤 Author
-
-**Ahmed Reda**
-- GitHub: [@ahmedreda20](https://github.com/ahmedreda20)
-- Email: ahmedreda0219@gmail.com
-
-## 🙏 Acknowledgments
-
-- OpenSSL for encryption algorithms
-- Node.js crypto module
-- Base62 encoding concept
-
-## ⭐ Show Your Support
-
-Give a ⭐️ if this project helped you!
 
 ---
 
-Made with ❤️ by [Ahmed Reda](https://github.com/ahmedreda20)
+## 🌐 Vanilla JavaScript (Browser)
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ultra Compact Crypto</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script src="node_modules/ultra-compact-crypto/decrypt.js"></script>
+</head>
+<body>
+    <h2>Decrypt Data</h2>
+    <input id="encrypted" placeholder="Encrypted text">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="decryptData()">Decrypt</button>
+    <div id="result"></div>
+
+    <script>
+        function decryptData() {
+            const encrypted = document.getElementById('encrypted').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const decrypted = UltraCompactCrypto.decrypt(encrypted, password);
+                resultDiv.innerHTML = '<p style="color: green;">Result: ' + decrypted + '</p>';
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>
+```
+
+---
+
+## 🔧 Advanced Usage
+
+### Environment Variables
+```javascript
+// .env
+ENCRYPTION_PASSWORD=my_secret_password
+
+// usage
+import { decrypt } from 'ultra-compact-crypto';
+
+const password = process.env.ENCRYPTION_PASSWORD;
+const decrypted = decrypt(encryptedData, password);
+```
+
+### Error Handling
+```typescript
+import { decrypt } from 'ultra-compact-crypto';
+
+try {
+    const result = decrypt(encrypted, password);
+    console.log('Success:', result);
+} catch (error) {
+    if (error.message.includes('Invalid character')) {
+        console.error('Invalid encrypted format');
+    } else if (error.message.includes('empty result')) {
+        console.error('Wrong password');
+    } else {
+        console.error('Decryption error:', error.message);
+    }
+}
+```
+
+### Middleware (Express)
+```javascript
+const { decrypt } = require('ultra-compact-crypto');
+
+function decryptMiddleware(req, res, next) {
+    const { encrypted, password } = req.body;
+    
+    if (encrypted && password) {
+        try {
+            req.decrypted = decrypt(encrypted, password);
+        } catch (error) {
+            return res.status(400).json({ error: 'Decryption failed' });
+        }
+    }
+    
+    next();
+}
+
+app.use(decryptMiddleware);
+```

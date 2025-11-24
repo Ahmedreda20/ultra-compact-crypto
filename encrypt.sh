@@ -2,6 +2,7 @@
 
 # Ultra-Compact Encryption Script
 # Produces very short alphanumeric output like: jsdf9rej4i
+# No compression for better compatibility
 
 set -e
 
@@ -97,8 +98,8 @@ print(result if result else '0')
 if [[ -n "$TEXT" ]]; then
     echo -e "${GREEN}Encrypting text...${NC}"
 
-    # Compress, encrypt, and convert to hex
-    HEX=$(echo -n "$TEXT" | gzip -c | openssl enc -aes-256-cbc -K "$KEY" -iv "$IV" | xxd -p | tr -d '\n')
+    # Encrypt and convert to hex (no compression)
+    HEX=$(echo -n "$TEXT" | openssl enc -aes-256-cbc -K "$KEY" -iv "$IV" | xxd -p | tr -d '\n')
 
     # Convert to base62 for ultra-compact output
     ENCRYPTED=$(base62_encode "$HEX")
@@ -128,8 +129,8 @@ if [[ -n "$FILE" ]]; then
         OUTPUT="${FILE}.enc"
     fi
 
-    # Compress, encrypt, convert to hex, then base62
-    HEX=$(gzip -c "$FILE" | openssl enc -aes-256-cbc -K "$KEY" -iv "$IV" | xxd -p | tr -d '\n')
+    # Encrypt file and convert to hex (no compression)
+    HEX=$(openssl enc -aes-256-cbc -K "$KEY" -iv "$IV" -in "$FILE" | xxd -p | tr -d '\n')
     ENCRYPTED=$(base62_encode "$HEX")
 
     echo "$ENCRYPTED" > "$OUTPUT"

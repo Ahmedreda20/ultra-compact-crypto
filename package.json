@@ -3,7 +3,6 @@
   "version": "1.0.8",
   "description": "Ultra-compact encryption/decryption library with very short alphanumeric output using AES-256-CBC and base62 encoding",
   "main": "index.js",
-  "type": "module",
   "bin": {
     "decrypt": "./index.js",
     "ucc-encrypt": "./encrypt.sh"
